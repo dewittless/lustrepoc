@@ -1,0 +1,167 @@
+---
+
+- hosts: all
+  become: yes
+  vars:
+    mypath: /tmp/formatted
+  tasks:
+  - name: Disable firewall.
+    service: name=firewalld state=stopped enabled=no
+
+  - name: Disable SELinux
+    replace:
+      path: /etc/selinux/config
+      regexp: 'SELINUX=enforcing'
+      replace: 'SELINUX=disabled'
+      backup: yes
+    register: task_result
+
+  - name: Install rsync
+    become: yes
+    yum:
+      name:
+        - rsync
+      state: installed
+
+  - name: Reboot
+    reboot:
+      reboot_timeout: 300
+
+- hosts: lustre
+  become: no
+  tasks:
+  - name: Copy Lustre Server RPMS to server.
+    synchronize:
+      src: /Users/ccdewitt/vagrant-projects/lustre/pkgs/2.12.4/server
+      dest: /tmp/lustre/
+      recursive: yes
+
+  - name: Install Lustre on servers.
+    become: yes
+    yum:
+      name:
+        - /tmp/lustre/server/e2fsprogs-1.45.2.wc1-0.el7.x86_64.rpm
+        - /tmp/lustre/server/e2fsprogs-libs-1.45.2.wc1-0.el7.x86_64.rpm
+        - /tmp/lustre/server/kmod-lustre-2.12.4-1.el7.x86_64.rpm
+        - /tmp/lustre/server/kmod-lustre-osd-ldiskfs-2.12.4-1.el7.x86_64.rpm
+        - /tmp/lustre/server/libcom_err-1.45.2.wc1-0.el7.x86_64.rpm
+        - /tmp/lustre/server/libss-1.45.2.wc1-0.el7.x86_64.rpm
+        - /tmp/lustre/server/lustre-2.12.4-1.el7.x86_64.rpm
+        - /tmp/lustre/server/lustre-osd-ldiskfs-mount-2.12.4-1.el7.x86_64.rpm
+        - libyaml
+      state: installed
+
+  - name: Create lustre.conf file.
+    become: yes
+    lineinfile:
+      path: /etc/modprobe.d/lustre.conf
+      line: 'options lnet networks="tcp0(eth1)"'
+      create: yes
+
+- hosts: mds
+  become: yes
+  vars:
+    mypath: /tmp/formatted
+  tasks:
+  - name: Stat mypath
+    stat: path={{ mypath }}
+    register: foo
+
+  - name: Reboot immediately if there was a change.
+    reboot:
+      reboot_timeout: 300
+    when: task_result is changed
+
+  - name: Create MDS parition.
+    shell: 'mkfs.lustre --reformat --fsname=testfs --index="{{ lustre_index }}" --mdt --mgs --servicenode=192.168.60.11@tcp0 /dev/sdb && touch /tmp/formatted'
+    when: not foo.stat.exists
+
+  - name: Insert file into /etc/fstab.
+    lineinfile:
+      path: /etc/fstab
+      line: '/dev/sdb  "{{ mount_point }}"  lustre  defaults,_netdev,noauto  0 0'
+      create: no
+
+  - name: Creates mount point
+    file: path="{{ mount_point }}" state=directory
+
+- hosts: oss
+  become: yes
+  vars:
+    mypath: /tmp/formatted
+  tasks:
+  - name: Stat mypath
+    stat: path={{ mypath }}
+    register: foo
+
+  - name: Reboot immediately if there was a change.
+    reboot:
+      reboot_timeout: 300
+    when: task_result is changed
+
+  - name: Create OST parition.
+    shell: 'mkfs.lustre --reformat --fsname=testfs --index="{{ lustre_index }}" --ost --mgsnode=192.168.60.11@tcp0 /dev/sdb  && touch /tmp/formatted'
+    when: not foo.stat.exists
+
+  - name: Insert file into /etc/fstab.
+    lineinfile:
+      path: /etc/fstab
+      line: '/dev/sdb  "{{ mount_point }}"  lustre  defaults,_netdev,noauto  0 0'
+      create: no
+
+  - name: Creates mount point
+    file: path="{{ mount_point }}" state=directory
+
+- hosts: cli
+  become: yes
+  tasks:
+  - name: Copy Lustre Server RPMS to server.
+    synchronize:
+      src: /Users/ccdewitt/vagrant-projects/lustre/pkgs/2.12.4/client
+      dest: /tmp/lustre/
+      recursive: yes
+
+  - name: Install nfs-utils
+    become: yes
+    yum:
+      name:
+      - nfs-utils
+      state: installed
+
+  - name: Install Lustre on Client
+    become: yes
+    yum:
+      name:
+      - /tmp/lustre/client/kmod-lustre-client-2.12.4-1.el7.x86_64.rpm
+      - /tmp/lustre/client/lustre-client-2.12.4-1.el7.x86_64.rpm
+      state: installed
+
+  - name: Insert file into /etc/fstab.
+    lineinfile:
+      path: /etc/fstab
+      line: '192.168.60.11@tcp0:/testfs /dfs/testfs lustre rw,defaults,_netdev,noauto 0 0'
+      create: no
+
+  - name: Creates client mount point
+    file: path=/dfs/testfs state=directory
+
+- hosts: mds,oss
+  become: yes
+  tasks:
+  - name: Mount Lustre Storage (Servers)
+    mount:
+      src: /dev/sdb
+      fstype: lustre
+      path: "{{ mount_point }}"
+      state: mounted
+
+- hosts: cli
+  become: yes
+  tasks:
+  - name: Mount Lustre Storage (Client)
+    mount:
+      src: 192.168.60.11@tcp0:/testfs
+      opts: rw,defaults,_netdev,noauto
+      fstype: lustre
+      path: "{{ mount_point }}"
+      state: mounted
