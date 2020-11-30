@@ -48,10 +48,6 @@ end
         unless File.exist?(datadisk) 
           vb.customize ['createhd', '--filename', datadisk, '--variant', 'Fixed', '--size', 4 * 1024]
         end
-        vb.memory = "1024"
-        unless File.exist?(datadisk1) 
-          vb.customize ['createhd', '--filename', datadisk1, '--variant', 'Fixed', '--size', 4 * 1024]
-        end
         vb.customize ['storageattach', :id,  '--storagectl', 'SATA', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', datadisk]
       end
     end
