@@ -45,7 +45,6 @@ end
         vb.cpus = 2
         vb.customize ["storagectl", :id, "--name", "SATA", "--add", "sata", "--controller", "IntelAHCI"]
         datadisk="#{current_dir}/drives/oss#{i}-sdb.vdi"
-        datadisk1="#{current_dir}/drives/oss#{i}-sdc.vdi"
         unless File.exist?(datadisk) 
           vb.customize ['createhd', '--filename', datadisk, '--variant', 'Fixed', '--size', 4 * 1024]
         end
