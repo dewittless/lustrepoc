@@ -32,7 +32,7 @@
   tasks:
   - name: Copy Lustre Server RPMS to server.
     synchronize:
-      src: /Users/ccdewitt/vagrant-projects/lustre/pkgs/2.12.4/server
+      src: {{ playbook_dir }}/pkgs/2.12.4/server
       dest: /tmp/lustre/
       recursive: yes
 
@@ -117,7 +117,7 @@
   tasks:
   - name: Copy Lustre Server RPMS to server.
     synchronize:
-      src: /Users/ccdewitt/vagrant-projects/lustre/pkgs/2.12.4/client
+      src: {{ playbook_dir }}/pkgs/2.12.4/client
       dest: /tmp/lustre/
       recursive: yes
 
