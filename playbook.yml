@@ -32,7 +32,7 @@
   tasks:
   - name: Copy Lustre Server RPMS to server.
     synchronize:
-      src: {{ playbook_dir }}/pkgs/2.12.4/server
+      src: "{{ playbook_dir }}/pkgs/2.12.4/server"
       dest: /tmp/lustre/
       recursive: yes
 
@@ -64,7 +64,7 @@
     mypath: /tmp/formatted
   tasks:
   - name: Stat mypath
-    stat: path={{ mypath }}
+    stat: path="{{ mypath }}"
     register: foo
 
   - name: Reboot immediately if there was a change.
@@ -91,7 +91,7 @@
     mypath: /tmp/formatted
   tasks:
   - name: Stat mypath
-    stat: path={{ mypath }}
+    stat: path="{{ mypath }}"
     register: foo
 
   - name: Reboot immediately if there was a change.
@@ -117,7 +117,7 @@
   tasks:
   - name: Copy Lustre Server RPMS to server.
     synchronize:
-      src: {{ playbook_dir }}/pkgs/2.12.4/client
+      src: "{{ playbook_dir }}/pkgs/2.12.4/client"
       dest: /tmp/lustre/
       recursive: yes
 
